@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -159,32 +159,69 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   }, [lectures, searchOptions]);
 
   const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
-  const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
-  const allMajors = [...new Set(lectures.map((lecture) => lecture.major))];
+  const visibleLectures = useMemo(() => filteredLectures.slice(0, page * PAGE_SIZE), [filteredLectures, page]);
+  const allMajors = useMemo(() => {
+    return [...new Set(lectures.filter((lecture) => lecture && lecture.major).map((lecture) => lecture.major))];
+  }, [lectures]);
+  // SearchDialog 컴포넌트 내부
 
-  const changeSearchOption = (field: keyof SearchOption, value: SearchOption[typeof field]) => {
+  // 공통 헬퍼
+  const resetAndScroll = () => {
     setPage(1);
-    setSearchOptions({ ...searchOptions, [field]: value });
     loaderWrapperRef.current?.scrollTo(0, 0);
   };
 
-  const addSchedule = (lecture: Lecture) => {
-    if (!searchInfo) return;
-
-    const { tableId } = searchInfo;
-
-    const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
-      ...schedule,
-      lecture,
-    }));
-
-    setSchedulesMap((prev) => ({
-      ...prev,
-      [tableId]: [...prev[tableId], ...schedules],
-    }));
-
-    onClose();
+  // 각각 핸들러 분리
+  const handleQueryChange = (value: string) => {
+    setSearchOptions((prev) => ({ ...prev, query: value }));
+    resetAndScroll();
   };
+
+  const handleCreditsChange = (value: string) => {
+    setSearchOptions((prev) => ({ ...prev, credits: value ? Number(value) : undefined }));
+    resetAndScroll();
+  };
+
+  const handleGradesChange = (values: number[]) => {
+    setSearchOptions((prev) => ({ ...prev, grades: values }));
+    resetAndScroll();
+  };
+
+  const handleDaysChange = (values: string[]) => {
+    setSearchOptions((prev) => ({ ...prev, days: values }));
+    resetAndScroll();
+  };
+
+  const handleTimesChange = (values: number[]) => {
+    setSearchOptions((prev) => ({ ...prev, times: values }));
+    resetAndScroll();
+  };
+
+  const handleMajorsChange = (values: string[]) => {
+    setSearchOptions((prev) => ({ ...prev, majors: values }));
+    resetAndScroll();
+  };
+
+  const addSchedule = useCallback(
+    (lecture: Lecture) => {
+      if (!searchInfo) return;
+
+      const { tableId } = searchInfo;
+
+      const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
+        ...schedule,
+        lecture,
+      }));
+
+      setSchedulesMap((prev) => ({
+        ...prev,
+        [tableId]: [...prev[tableId], ...schedules],
+      }));
+
+      onClose();
+    },
+    [searchInfo, setSchedulesMap, onClose]
+  );
 
   useEffect(() => {
     const start = performance.now();
@@ -242,13 +279,13 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <Input
                   placeholder="과목명 또는 과목코드"
                   value={searchOptions.query}
-                  onChange={(e) => changeSearchOption("query", e.target.value)}
+                  onChange={(e) => handleQueryChange(e.target.value)}
                 />
               </FormControl>
 
               <FormControl>
                 <FormLabel>학점</FormLabel>
-                <Select value={searchOptions.credits} onChange={(e) => changeSearchOption("credits", e.target.value)}>
+                <Select value={searchOptions.credits ?? ""} onChange={(e) => handleCreditsChange(e.target.value)}>
                   <option value="">전체</option>
                   <option value="1">1학점</option>
                   <option value="2">2학점</option>
@@ -260,10 +297,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>학년</FormLabel>
-                <CheckboxGroup
-                  value={searchOptions.grades}
-                  onChange={(value) => changeSearchOption("grades", value.map(Number))}
-                >
+                <CheckboxGroup value={searchOptions.grades} onChange={(value) => handleGradesChange(value.map(Number))}>
                   <HStack spacing={4}>
                     {[1, 2, 3, 4].map((grade) => (
                       <Checkbox key={grade} value={grade}>
@@ -276,10 +310,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>요일</FormLabel>
-                <CheckboxGroup
-                  value={searchOptions.days}
-                  onChange={(value) => changeSearchOption("days", value as string[])}
-                >
+                <CheckboxGroup value={searchOptions.days} onChange={(value) => handleDaysChange(value as string[])}>
                   <HStack spacing={4}>
                     {DAY_LABELS.map((day) => (
                       <Checkbox key={day} value={day}>
@@ -294,11 +325,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>시간</FormLabel>
-                <CheckboxGroup
-                  colorScheme="green"
-                  value={searchOptions.times}
-                  onChange={(values) => changeSearchOption("times", values.map(Number))}
-                >
+                <CheckboxGroup value={searchOptions.times} onChange={(value) => handleTimesChange(value.map(Number))}>
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.times
                       .sort((a, b) => a - b)
@@ -306,12 +333,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                         <Tag key={time} size="sm" variant="outline" colorScheme="blue">
                           <TagLabel>{time}교시</TagLabel>
                           <TagCloseButton
-                            onClick={() =>
-                              changeSearchOption(
-                                "times",
-                                searchOptions.times.filter((v) => v !== time)
-                              )
-                            }
+                            onClick={() => handleTimesChange(searchOptions.times.filter((v) => v !== time))}
                           />
                         </Tag>
                       ))}
@@ -338,22 +360,14 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>전공</FormLabel>
-                <CheckboxGroup
-                  colorScheme="green"
-                  value={searchOptions.majors}
-                  onChange={(values) => changeSearchOption("majors", values as string[])}
-                >
+
+                <CheckboxGroup value={searchOptions.majors} onChange={(value) => handleMajorsChange(value as string[])}>
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.majors.map((major) => (
                       <Tag key={major} size="sm" variant="outline" colorScheme="blue">
                         <TagLabel>{major.split("<p>").pop()}</TagLabel>
                         <TagCloseButton
-                          onClick={() =>
-                            changeSearchOption(
-                              "majors",
-                              searchOptions.majors.filter((v) => v !== major)
-                            )
-                          }
+                          onClick={() => handleMajorsChange(searchOptions.majors.filter((v) => v !== major))}
                         />
                       </Tag>
                     ))}
