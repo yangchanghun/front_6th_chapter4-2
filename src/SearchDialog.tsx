@@ -158,29 +158,29 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   // 공통 헬퍼
 
   // 각각 핸들러 분리
-  const handleQueryChange = (value: string) => {
+  const handleQueryChange = useCallback((value: string) => {
     setSearchOptions((prev) => ({ ...prev, query: value }));
-  };
+  }, []);
 
-  const handleCreditsChange = (value: string) => {
+  const handleCreditsChange = useCallback((value: string) => {
     setSearchOptions((prev) => ({ ...prev, credits: value ? Number(value) : undefined }));
-  };
+  }, []);
 
-  const handleGradesChange = (values: number[]) => {
+  const handleGradesChange = useCallback((values: number[]) => {
     setSearchOptions((prev) => ({ ...prev, grades: values }));
-  };
+  }, []);
 
-  const handleDaysChange = (values: string[]) => {
+  const handleDaysChange = useCallback((values: string[]) => {
     setSearchOptions((prev) => ({ ...prev, days: values }));
-  };
+  }, []);
 
-  const handleTimesChange = (values: number[]) => {
+  const handleTimesChange = useCallback((values: number[]) => {
     setSearchOptions((prev) => ({ ...prev, times: values }));
-  };
+  }, []);
 
-  const handleMajorsChange = (values: string[]) => {
+  const handleMajorsChange = useCallback((values: string[]) => {
     setSearchOptions((prev) => ({ ...prev, majors: values }));
-  };
+  }, []);
 
   const addSchedule = useCallback(
     (lecture: Lecture) => {
