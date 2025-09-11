@@ -1,7 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Button,
   Checkbox,
   CheckboxGroup,
   FormControl,
@@ -20,8 +19,6 @@ import {
   Tag,
   TagCloseButton,
   TagLabel,
-  Tbody,
-  Td,
   Text,
   Th,
   Thead,
@@ -34,7 +31,7 @@ import { Lecture } from "./types.ts";
 import { parseSchedule } from "./utils.ts";
 import axios from "axios";
 import { DAY_LABELS } from "./constants.ts";
-
+import LectureTable from "./LectureTable.tsx";
 interface Props {
   searchInfo: {
     tableId: string;
@@ -80,8 +77,6 @@ const TIME_SLOTS = [
   { id: 24, label: "22:35~23:25" },
 ];
 
-const PAGE_SIZE = 100;
-
 const checkCached = <T,>(fn: () => Promise<T>) => {
   let cached: Promise<T> | null = null; // 최초엔 null
   return () => {
@@ -119,10 +114,7 @@ const fetchAllLectures = async () => {
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const { setSchedulesMap } = useScheduleContext();
 
-  const loaderWrapperRef = useRef<HTMLDivElement>(null);
-  const loaderRef = useRef<HTMLDivElement>(null);
   const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [page, setPage] = useState(1);
   const [searchOptions, setSearchOptions] = useState<SearchOption>({
     query: "",
     grades: [],
@@ -158,48 +150,36 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
       });
   }, [lectures, searchOptions]);
 
-  const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
-  const visibleLectures = useMemo(() => filteredLectures.slice(0, page * PAGE_SIZE), [filteredLectures, page]);
   const allMajors = useMemo(() => {
     return [...new Set(lectures.filter((lecture) => lecture && lecture.major).map((lecture) => lecture.major))];
   }, [lectures]);
   // SearchDialog 컴포넌트 내부
 
   // 공통 헬퍼
-  const resetAndScroll = () => {
-    setPage(1);
-    loaderWrapperRef.current?.scrollTo(0, 0);
-  };
 
   // 각각 핸들러 분리
   const handleQueryChange = (value: string) => {
     setSearchOptions((prev) => ({ ...prev, query: value }));
-    resetAndScroll();
   };
 
   const handleCreditsChange = (value: string) => {
     setSearchOptions((prev) => ({ ...prev, credits: value ? Number(value) : undefined }));
-    resetAndScroll();
   };
 
   const handleGradesChange = (values: number[]) => {
     setSearchOptions((prev) => ({ ...prev, grades: values }));
-    resetAndScroll();
   };
 
   const handleDaysChange = (values: string[]) => {
     setSearchOptions((prev) => ({ ...prev, days: values }));
-    resetAndScroll();
   };
 
   const handleTimesChange = (values: number[]) => {
     setSearchOptions((prev) => ({ ...prev, times: values }));
-    resetAndScroll();
   };
 
   const handleMajorsChange = (values: string[]) => {
     setSearchOptions((prev) => ({ ...prev, majors: values }));
-    resetAndScroll();
   };
 
   const addSchedule = useCallback(
@@ -235,34 +215,11 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   }, []);
 
   useEffect(() => {
-    const $loader = loaderRef.current;
-    const $loaderWrapper = loaderWrapperRef.current;
-
-    if (!$loader || !$loaderWrapper) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setPage((prevPage) => Math.min(lastPage, prevPage + 1));
-        }
-      },
-      { threshold: 0, root: $loaderWrapper }
-    );
-
-    observer.observe($loader);
-
-    return () => observer.unobserve($loader);
-  }, [lastPage]);
-
-  useEffect(() => {
     setSearchOptions((prev) => ({
       ...prev,
       days: searchInfo?.day ? [searchInfo.day] : [],
       times: searchInfo?.time ? [searchInfo.time] : [],
     }));
-    setPage(1);
   }, [searchInfo]);
 
   return (
@@ -408,7 +365,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 </Thead>
               </Table>
 
-              <Box overflowY="auto" maxH="500px" ref={loaderWrapperRef}>
+              {/* <Box overflowY="auto" maxH="500px" ref={loaderWrapperRef}>
                 <Table size="sm" variant="striped">
                   <Tbody>
                     {visibleLectures.map((lecture, index) => (
@@ -417,7 +374,8 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                   </Tbody>
                 </Table>
                 <Box ref={loaderRef} h="20px" />
-              </Box>
+              </Box> */}
+              <LectureTable lectures={filteredLectures} addSchedule={addSchedule} />
             </Box>
           </VStack>
         </ModalBody>
@@ -427,25 +385,3 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 };
 
 export default SearchDialog;
-
-interface LectureLowProps {
-  index: number;
-  lecture: Lecture;
-  addSchedule: (lecture: Lecture) => void;
-}
-
-const LectureLow = memo(({ index, lecture, addSchedule }: LectureLowProps) => (
-  <Tr key={`${lecture.id}-${index}`}>
-    <Td width="100px">{lecture.id}</Td>
-    <Td width="50px">{lecture.grade}</Td>
-    <Td width="200px">{lecture.title}</Td>
-    <Td width="50px">{lecture.credits}</Td>
-    <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.major }} />
-    <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.schedule }} />
-    <Td width="80px">
-      <Button size="sm" colorScheme="green" onClick={() => addSchedule(lecture)}>
-        추가
-      </Button>
-    </Td>
-  </Tr>
-));
