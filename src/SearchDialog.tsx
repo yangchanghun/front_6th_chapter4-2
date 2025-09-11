@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -93,13 +93,9 @@ const checkCached = <T,>(fn: () => Promise<T>) => {
   };
 };
 
-const fetchMajors = checkCached(() =>
-  axios.get<Lecture[]>("/schedules-majors.json")
-);
+const fetchMajors = checkCached(() => axios.get<Lecture[]>("/schedules-majors.json"));
 
-const fetchLiberalArts = checkCached(() =>
-  axios.get<Lecture[]>("/schedules-liberal-arts.json")
-);
+const fetchLiberalArts = checkCached(() => axios.get<Lecture[]>("/schedules-liberal-arts.json"));
 
 // const fetchMajors = () => axios.get<Lecture[]>("/schedules-majors.json");
 
@@ -143,34 +139,22 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
           lecture.title.toLowerCase().includes(query.toLowerCase()) ||
           lecture.id.toLowerCase().includes(query.toLowerCase())
       )
-      .filter(
-        (lecture) => grades.length === 0 || grades.includes(lecture.grade)
-      )
-      .filter(
-        (lecture) => majors.length === 0 || majors.includes(lecture.major)
-      )
-      .filter(
-        (lecture) => !credits || lecture.credits.startsWith(String(credits))
-      )
+      .filter((lecture) => grades.length === 0 || grades.includes(lecture.grade))
+      .filter((lecture) => majors.length === 0 || majors.includes(lecture.major))
+      .filter((lecture) => !credits || lecture.credits.startsWith(String(credits)))
       .filter((lecture) => {
         if (days.length === 0) {
           return true;
         }
-        const schedules = lecture.schedule
-          ? parseSchedule(lecture.schedule)
-          : [];
+        const schedules = lecture.schedule ? parseSchedule(lecture.schedule) : [];
         return schedules.some((s) => days.includes(s.day));
       })
       .filter((lecture) => {
         if (times.length === 0) {
           return true;
         }
-        const schedules = lecture.schedule
-          ? parseSchedule(lecture.schedule)
-          : [];
-        return schedules.some((s) =>
-          s.range.some((time) => times.includes(time))
-        );
+        const schedules = lecture.schedule ? parseSchedule(lecture.schedule) : [];
+        return schedules.some((s) => s.range.some((time) => times.includes(time)));
       });
   };
 
@@ -179,10 +163,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
   const allMajors = [...new Set(lectures.map((lecture) => lecture.major))];
 
-  const changeSearchOption = (
-    field: keyof SearchOption,
-    value: SearchOption[typeof field]
-  ) => {
+  const changeSearchOption = (field: keyof SearchOption, value: SearchOption[typeof field]) => {
     setPage(1);
     setSearchOptions({ ...searchOptions, [field]: value });
     loaderWrapperRef.current?.scrollTo(0, 0);
@@ -268,12 +249,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>학점</FormLabel>
-                <Select
-                  value={searchOptions.credits}
-                  onChange={(e) =>
-                    changeSearchOption("credits", e.target.value)
-                  }
-                >
+                <Select value={searchOptions.credits} onChange={(e) => changeSearchOption("credits", e.target.value)}>
                   <option value="">전체</option>
                   <option value="1">1학점</option>
                   <option value="2">2학점</option>
@@ -287,9 +263,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <FormLabel>학년</FormLabel>
                 <CheckboxGroup
                   value={searchOptions.grades}
-                  onChange={(value) =>
-                    changeSearchOption("grades", value.map(Number))
-                  }
+                  onChange={(value) => changeSearchOption("grades", value.map(Number))}
                 >
                   <HStack spacing={4}>
                     {[1, 2, 3, 4].map((grade) => (
@@ -305,9 +279,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <FormLabel>요일</FormLabel>
                 <CheckboxGroup
                   value={searchOptions.days}
-                  onChange={(value) =>
-                    changeSearchOption("days", value as string[])
-                  }
+                  onChange={(value) => changeSearchOption("days", value as string[])}
                 >
                   <HStack spacing={4}>
                     {DAY_LABELS.map((day) => (
@@ -326,20 +298,13 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <CheckboxGroup
                   colorScheme="green"
                   value={searchOptions.times}
-                  onChange={(values) =>
-                    changeSearchOption("times", values.map(Number))
-                  }
+                  onChange={(values) => changeSearchOption("times", values.map(Number))}
                 >
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.times
                       .sort((a, b) => a - b)
                       .map((time) => (
-                        <Tag
-                          key={time}
-                          size="sm"
-                          variant="outline"
-                          colorScheme="blue"
-                        >
+                        <Tag key={time} size="sm" variant="outline" colorScheme="blue">
                           <TagLabel>{time}교시</TagLabel>
                           <TagCloseButton
                             onClick={() =>
@@ -377,18 +342,11 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <CheckboxGroup
                   colorScheme="green"
                   value={searchOptions.majors}
-                  onChange={(values) =>
-                    changeSearchOption("majors", values as string[])
-                  }
+                  onChange={(values) => changeSearchOption("majors", values as string[])}
                 >
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.majors.map((major) => (
-                      <Tag
-                        key={major}
-                        size="sm"
-                        variant="outline"
-                        colorScheme="blue"
-                      >
+                      <Tag key={major} size="sm" variant="outline" colorScheme="blue">
                         <TagLabel>{major.split("<p>").pop()}</TagLabel>
                         <TagCloseButton
                           onClick={() =>
@@ -441,29 +399,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <Table size="sm" variant="striped">
                   <Tbody>
                     {visibleLectures.map((lecture, index) => (
-                      <Tr key={`${lecture.id}-${index}`}>
-                        <Td width="100px">{lecture.id}</Td>
-                        <Td width="50px">{lecture.grade}</Td>
-                        <Td width="200px">{lecture.title}</Td>
-                        <Td width="50px">{lecture.credits}</Td>
-                        <Td
-                          width="150px"
-                          dangerouslySetInnerHTML={{ __html: lecture.major }}
-                        />
-                        <Td
-                          width="150px"
-                          dangerouslySetInnerHTML={{ __html: lecture.schedule }}
-                        />
-                        <Td width="80px">
-                          <Button
-                            size="sm"
-                            colorScheme="green"
-                            onClick={() => addSchedule(lecture)}
-                          >
-                            추가
-                          </Button>
-                        </Td>
-                      </Tr>
+                      <LectureLow index={index} lecture={lecture} addSchedule={addSchedule} />
                     ))}
                   </Tbody>
                 </Table>
@@ -478,3 +414,25 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 };
 
 export default SearchDialog;
+
+interface LectureLowProps {
+  index: number;
+  lecture: Lecture;
+  addSchedule: (lecture: Lecture) => void;
+}
+
+const LectureLow = memo(({ index, lecture, addSchedule }: LectureLowProps) => (
+  <Tr key={`${lecture.id}-${index}`}>
+    <Td width="100px">{lecture.id}</Td>
+    <Td width="50px">{lecture.grade}</Td>
+    <Td width="200px">{lecture.title}</Td>
+    <Td width="50px">{lecture.credits}</Td>
+    <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.major }} />
+    <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.schedule }} />
+    <Td width="80px">
+      <Button size="sm" colorScheme="green" onClick={() => addSchedule(lecture)}>
+        추가
+      </Button>
+    </Td>
+  </Tr>
+));
